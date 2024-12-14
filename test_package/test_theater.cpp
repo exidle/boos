@@ -23,4 +23,7 @@ TEST_F(TheaterFixture, GetRoom) {
 TEST_F(TheaterFixture, AssignMovie) {
   theater.assignMovie("Room 1", {"Movie 1", 1991});
   EXPECT_EQ(theater.getMovie("Room 1"), (MovieItem{"Movie 1", 1991}));
+
+  EXPECT_TRUE(theater.hasMovie("Room 1"));
+  EXPECT_FALSE(theater.hasMovie("Room 2"));
 }

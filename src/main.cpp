@@ -4,101 +4,138 @@
 
 int main() {
   boosapi::BoosAPI boosapi;
-  crow::SimpleApp app; // Create a Crow application
+  crow::SimpleApp app;
 
-  // Define a route for GET requests to "/"
-  CROW_ROUTE(app, "/")([]() { return "Booking API"; });
+  CROW_ROUTE(app, "/")
+  ([]() {
+    return "Booking API:"
+           "\n/api/movies GET;"
+           "\n/api/theaters POST param: movie;"
+           "\n/api/rooms POST param: theater, param: movie;"
+           "\n/api/seats GET param: theater, param: room;"
+           "\n/api/book GET param: theater, param: room, param: seat;";
+  });
 
-  // Define a route for GET requests to "/api/movies"
   CROW_ROUTE(app, "/api/movies")
   ([&boosapi]() {
     std::vector<boosapi::MovieItem> movies = boosapi.getAllMovies();
+    std::cout << "There are " << movies.size() << " movies" << std::endl;
 
     crow::json::wvalue response_json;
+    auto list = crow::json::wvalue::list();
     for (const boosapi::MovieItem &movie : movies) {
       crow::json::wvalue movie_json;
       movie_json["title"] = movie.title;
       movie_json["year"] = movie.year;
-      response_json["movies"] = std::move(movie_json);
+      list.push_back(movie_json);
     }
+    response_json["movies"] = std::move(list);
 
     return crow::response(200, response_json);
   });
 
-  CROW_ROUTE(app, "/api/theaters/<string>")
-  ([&boosapi](const std::string &movie_info) {
-    crow::json::rvalue movie_json = crow::json::load(movie_info);
-    std::string movie_title = movie_json["title"].s();
-    int movie_year = movie_json["year"].i();
+  CROW_ROUTE(app, "/api/theaters")
+      .methods("POST"_method)([&boosapi](const crow::request &req) {
+        auto movie_json = crow::json::load(req.body);
+        if (!movie_json) {
+          return crow::response(400);
+        }
 
-    std::vector<std::string> theaters =
-        boosapi.getTheaters(boosapi::MovieItem{movie_title, movie_year});
+        std::string movie_title = movie_json["title"].s();
+        int movie_year = movie_json["year"].i();
 
-    crow::json::wvalue response_json;
-    for (const std::string &theater : theaters) {
-      crow::json::wvalue theater_json;
-      theater_json["theater"] = theater;
-      response_json["theaters"] = std::move(theater_json);
-    }
+        std::cout << "Movie title: " << movie_title << std::endl;
+        std::cout << "Movie year: " << movie_year << std::endl;
+        std::cout << to_string(boosapi::MovieItem{movie_title, movie_year})
+                  << std::endl;
 
-    return crow::response(200, response_json);
-  });
+        std::vector<std::string> theaters =
+            boosapi.getTheaters(boosapi::MovieItem{movie_title, movie_year});
 
-  CROW_ROUTE(app, "/api/rooms/<string>/<string>")
-  ([&boosapi](const std::string &theater, const std::string &movie_info) {
-    crow::json::rvalue movie_json = crow::json::load(movie_info);
-    std::string movie_title = movie_json["title"].s();
-    int movie_year = movie_json["year"].i();
+        std::cout << "There are " << theaters.size() << " theaters"
+                  << std::endl;
 
-    crow::json::rvalue theater_json = crow::json::load(theater);
-    std::string theater_name = theater_json["theater"].s();
+        crow::json::wvalue response_json;
+        auto list = crow::json::wvalue::list();
+        for (const std::string &theater : theaters) {
+          crow::json::wvalue theater_json;
+          theater_json["theater"] = theater;
+          list.push_back(theater_json);
+        }
+        response_json["theaters"] = std::move(list);
 
-    std::vector<std::string> rooms = boosapi.getRooms(
-        theater_name, boosapi::MovieItem{movie_title, movie_year});
+        return crow::response(response_json);
+      });
 
-    crow::json::wvalue response_json;
-    for (const std::string &room : rooms) {
-      crow::json::wvalue room_json;
-      room_json["room"] = room;
-      response_json["rooms"] = std::move(room_json);
-    }
+  CROW_ROUTE(app, "/api/rooms")
+      .methods("POST"_method)([&boosapi](const crow::request &req) {
+        auto data_json = crow::json::load(req.body);
+        if (!data_json) {
+          return crow::response(400);
+        }
 
-    return crow::response(200, response_json);
-  });
+        const std::string theater_name = data_json["theater"].s();
 
-  CROW_ROUTE(app, "/api/seats/<string>/<string>")
-  ([&boosapi](const std::string &theater, const std::string &room) {
-    crow::json::rvalue theater_json = crow::json::load(theater);
-    std::string theater_name = theater_json["theater"].s();
+        auto movie_json = data_json["movie"];
+        if (!movie_json) {
+          return crow::response(400);
+        }
 
-    crow::json::rvalue room_json = crow::json::load(room);
-    std::string room_name = room_json["room"].s();
+        std::string movie_title = movie_json["title"].s();
+        int movie_year = movie_json["year"].i();
 
+        std::cout << "Theater name: " << theater_name << std::endl;
+        std::cout << "Movie title: " << movie_title << std::endl;
+        std::cout << "Movie year: " << movie_year << std::endl;
+
+        std::vector<std::string> rooms = boosapi.getRooms(
+            theater_name, boosapi::MovieItem{movie_title, movie_year});
+
+        crow::json::wvalue response_json;
+        auto list = crow::json::wvalue::list();
+        for (const std::string &room : rooms) {
+          crow::json::wvalue room_json;
+          room_json["room"] = room;
+          list.push_back(room_json);
+        }
+
+        response_json["rooms"] = std::move(list);
+        return crow::response(200, response_json);
+      });
+
+  CROW_ROUTE(app, "/api/seats")
+  ([&boosapi](const crow::request &req) {
+    auto const theater_name = req.url_params.get("theater");
+    auto const room_name = req.url_params.get("room");
+    std::cout << "Theater name: " << theater_name << std::endl;
+    std::cout << "Room name: " << room_name << std::endl;
     std::vector<boosapi::SeatType> seats =
         boosapi.getAvailableSeats(theater_name, room_name);
 
     crow::json::wvalue response_json;
+    auto list = crow::json::wvalue::list();
     for (const boosapi::SeatType &seat : seats) {
       crow::json::wvalue seat_json;
       seat_json["seat"] = boosapi::to_string(seat);
-      response_json["seats"] = std::move(seat_json);
+      list.push_back(seat_json);
     }
 
+    response_json["seats"] = std::move(list);
     return crow::response(200, response_json);
   });
 
-  CROW_ROUTE(app, "/api/book/<string>/<string>/<string>")
-  ([&boosapi](const std::string &theater, const std::string &room,
-              const std::string &seat) {
-    crow::json::rvalue theater_json = crow::json::load(theater);
-    std::string theater_name = theater_json["theater"].s();
+  CROW_ROUTE(app, "/api/book")
+  ([&boosapi](const crow::request &req) {
+    auto const theater_name = req.url_params.get("theater");
+    auto const room_name = req.url_params.get("room");
+    auto const seat = req.url_params.get("seat");
 
-    crow::json::rvalue room_json = crow::json::load(room);
-    std::string room_name = room_json["room"].s();
+    std::cout << "Theater name: " << theater_name << std::endl;
+    std::cout << "Room name: " << room_name << std::endl;
+    std::cout << "Seat: " << seat << std::endl;
 
-    crow::json::rvalue seat_json = crow::json::load(seat);
     try {
-      boosapi::SeatType seat_type = boosapi::from_string(seat_json["seat"].s());
+      boosapi::SeatType seat_type = boosapi::from_string(seat);
       auto booked = boosapi.bookSeat(theater_name, room_name, seat_type);
       if (booked) {
         return crow::response(200, "Seat booked successfully");

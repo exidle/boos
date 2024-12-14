@@ -34,4 +34,8 @@ MovieItem Theater::getMovie(const std::string &room_name) const {
   return movies.at(room_name);
 }
 
+bool Theater::hasMovie(const std::string &room_name) const {
+  return movies.find(room_name) != movies.end();
+}
+
 } // namespace boosapi

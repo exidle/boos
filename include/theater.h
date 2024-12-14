@@ -2,7 +2,6 @@
 
 #include "movie.h"
 #include "room.h"
-#include "seat.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -26,6 +25,7 @@ public:
   void assignMovie(const std::string &room_name, const MovieItem &movie);
 
   MovieItem getMovie(const std::string &room_name) const;
+  bool hasMovie(const std::string &room_name) const;
 
 private:
   std::string name;

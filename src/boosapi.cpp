@@ -39,10 +39,11 @@ BoosAPI::BoosAPI()
 std::vector<std::string> BoosAPI::getTheaters(const MovieItem &movie) const {
   std::vector<std::string> found_theaters;
   for (const Theater &theater : theaters) {
-    if (std::any_of(theater.getAvailableRooms().begin(),
-                    theater.getAvailableRooms().end(),
+    const auto available_rooms = theater.getAvailableRooms();
+    if (std::any_of(available_rooms.cbegin(), available_rooms.cend(),
                     [&movie, &theater](const std::string &room) {
-                      return theater.getMovie(room) == movie;
+                      return theater.hasMovie(room) &&
+                             theater.getMovie(room) == movie;
                     })) {
       found_theaters.push_back(theater.getName());
     }

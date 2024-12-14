@@ -23,7 +23,7 @@ Impl::SharedRoomData::SharedRoomData(size_t capacity) {
   char seatLetter = 'A';
   for (auto i = 0; i < capacity; i++) {
     seats.push_back({SeatType{seatLetter, i % 5 + 1}, false});
-    if (i % 5 == 0) {
+    if ((i + 1) % 5 == 0) {
       seatLetter++;
     }
   }
