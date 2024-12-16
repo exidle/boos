@@ -14,6 +14,10 @@ conan install . --build=missing
 And then run:
 conan create . --build=missing
 
+Goto build/Release and run make.
+cd build/Release (I assume that configuration in your working profile is Release)
+make
+
 I did't verify on Windows, perhaps shall work as it is.
 
 ## API
@@ -23,16 +27,16 @@ Service provides a following REST API:
 GET /api/movies
 Returns list of all available movies
 
-GET /api/theaters/<string movie>
+POST /api/theaters Param: movie
 Returns list of theaters where the given movie is available
 
-GET /api/rooms/<string theater name>/<string movie>
+POST /api/rooms Param: theater name, param: movie
 Returns list of rooms in selected theater where give movie is available
 
-GET /api/seats/<string theater name>/<string room name>
+GET /api/seats?theater=theater_name&room=room_name
 Returns available seats in given theater within given room
 
-GET /api/book/<string theater name>/<string room name>/<string seat>
+GET /api/book?theater=theater_name&room=room_name&seat=given_seat
 Book in a given theater within given room a given seat.
 Returns 200 on success. Returns 400 in case of error.
 
